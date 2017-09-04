@@ -1,10 +1,16 @@
 # WEIRGAN
 
+Python 3.5
+Tensorflow 1.2
+
+Save the dataset in a directory named ./data and the --dataset argument is the name of the file the data is saved in.
 
 ## Train
 ```
 python main.py --dataset=cifar --use_gpu=True --input_scale_size=32 --cat_num=2 --cont_num=5
 ```
+
+To load a model, the file must be located in the ./logs folder.
 
 ## Test
 ```

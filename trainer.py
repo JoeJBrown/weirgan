@@ -38,14 +38,6 @@ def norm_img(image, data_format=None):
 def denorm_img(norm, data_format):
     return tf.clip_by_value(to_nhwc((norm + 1)*127.5, data_format), 0, 255)
 
-def slerp(val, low, high):
-    """Code from https://github.com/soumith/dcgan.torch/issues/14"""
-    omega = np.arccos(np.clip(np.dot(low/np.linalg.norm(low), high/np.linalg.norm(high)), -1, 1))
-    so = np.sin(omega)
-    if so == 0:
-        return (1.0-val) * low + val * high # L'Hopital's rule/LERP
-    return np.sin((1.0-val)*omega) / so * low + np.sin(val*omega) / so * high
-
 class Trainer(object):
     def __init__(self, config, data_loader):
         self.config = config
@@ -70,6 +62,8 @@ class Trainer(object):
         self.gamma = config.gamma
         self.lambda_k = config.lambda_k
 
+        self.cat_num = config.cat_num
+        self.cont_num = config.cont_num
         self.z_num = config.z_num
         self.conv_hidden_num = config.conv_hidden_num
         self.input_scale_size = config.input_scale_size
@@ -121,10 +115,10 @@ class Trainer(object):
 
     def train(self):
         z_fixed_2 = np.random.uniform(-1, 1, size=(self.batch_size, self.z_num))
-        z_int = np.random.randint(0, self.cat_dim, [self.batch_size]).astype(np.int32)
-        z_fixed = np.zeros((self.batch_size, self.cat_dim))
+        z_int = np.random.randint(0, self.cat_num, [self.batch_size]).astype(np.int32)
+        z_fixed = np.zeros((self.batch_size, self.cat_num))
         z_fixed[np.arange(self.batch_size), z_int] = 1
-        z_fixed = np.reshape(z_fixed, [self.batch_size, self.cat_dim])
+        z_fixed = np.reshape(z_fixed, [self.batch_size, self.cat_num])
         z_fixed_1 = np.random.uniform(-1, 1, [self.batch_size, self.cont_num]).astype(np.float32)
         z_fixed = np.concatenate([z_fixed, z_fixed_1, z_fixed_2], axis=1)
 
@@ -189,15 +183,10 @@ class Trainer(object):
         self.x = self.data_loader
         x = norm_img(self.x)
         self.k_t = tf.Variable(0., trainable=False, name='k_t')
-        self.cat_num = 1
-        self.cont_num = 10
-
         self.z_noise = tf.random_uniform((tf.shape(x)[0], self.z_num), minval=-1.0, maxval=1.0)
-        self.cat_dim = self.cat_num
-        self.cat_list = [self.cat_num]
-        self.latent_cat_in = tf.constant(np.random.randint(0, self.cat_dim, [self.batch_size, 1]).astype(np.int32),dtype=tf.int32)
-        self.z_lats = tf.one_hot(indices=self.latent_cat_in, depth=self.cat_dim)
-        self.z_lats = tf.reshape(self.z_lats, [-1, self.cat_dim])
+        self.latent_cat_in = tf.constant(np.random.randint(0, self.cat_num, [self.batch_size, 1]).astype(np.int32),dtype=tf.int32)
+        self.z_lats = tf.one_hot(indices=self.latent_cat_in, depth=self.cat_num)
+        self.z_lats = tf.reshape(self.z_lats, [-1, self.cat_num])
 
         self.latent_cont_in = tf.random_uniform((tf.shape(x)[0], self.cont_num), minval=-1.0, maxval=1.0)
 
@@ -332,10 +321,10 @@ class Trainer(object):
         root_path = "./test_images/"
         all_G_z = None
         for step in range(10):
-            z_int = np.random.randint(0, self.cat_dim, [self.batch_size]).astype(np.int32)
-            z_fixed = np.zeros((self.batch_size, self.cat_dim))
+            z_int = np.random.randint(0, self.cat_num, [self.batch_size]).astype(np.int32)
+            z_fixed = np.zeros((self.batch_size, self.cat_num))
             z_fixed[np.arange(self.batch_size), z_int] = 1
-            z_fixed = np.reshape(z_fixed, [self.batch_size, self.cat_dim])
+            z_fixed = np.reshape(z_fixed, [self.batch_size, self.cat_num])
             z_fixed_1 = np.random.uniform(-1, 1, [self.batch_size, self.cont_num]).astype(np.float32)
 
             z_fixed_2 = np.random.uniform(-1, 1, size=(self.batch_size, self.z_num))
